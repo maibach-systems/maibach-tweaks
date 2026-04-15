@@ -1,0 +1,5 @@
+.DS_Store
+*.log
+*.backup
+backup-before-tweaks/
+session-state.md

@@ -1,0 +1,184 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(go:*)",
+      "Write(*)",
+      "Bash(ls:*)",
+      "Bash(git:*)",
+      "Update(*:*)",
+      "Bash(mv:*)",
+      "Bash(echo:*)",
+      "Bash(sed:*)",
+      "Bash(source:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(pkill:*)",
+      "Bash(touch:*)",
+      "Bash(grep:*)",
+      "Bash(sqlite3:*)",
+      "Bash(curl:*)",
+      "Bash(rg:*)",
+      "Bash(chmod:*)",
+      "Bash(lsof:*)",
+      "Bash(make:*)",
+      "Bash(PORT=:*)",
+      "Bash(find:*)",
+      "Bash(docker:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(bun:*)",
+      "Bash(gh:*)",
+      "Bash(cat:*)"
+    ],
+    "ask": [
+      "Edit(/CLAUDE.md)",
+      "Write(/CLAUDE.md)",
+      "Edit(*/CLAUDE.md)",
+      "Write(*/CLAUDE.md)",
+      "Edit(*/*/CLAUDE.md)",
+      "Write(*/*/CLAUDE.md)",
+      "Edit(/.claude/rules/*)",
+      "Write(/.claude/rules/*)",
+      "Edit(/.claude/settings*)",
+      "Write(/.claude/settings*)",
+      "Edit(/.claude/plan.md)",
+      "Write(/.claude/plan.md)",
+      "Bash(rm:*)"
+    ],
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/block-force-flags.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/block-env-edit.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/block-secrets.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/protect-config.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/file-length-warning.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/plan-created-validate.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/phase-complete-stop.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"Claude is waiting for input\" with title \"Claude Code\"'"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/pre-compact.sh"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/post-compact.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Pondering",
+      "Scheming",
+      "Tinkering",
+      "Noodling",
+      "Wrangling",
+      "Spelunking",
+      "Concocting",
+      "Finagling",
+      "Rummaging",
+      "Percolating",
+      "Untangling",
+      "Machinating"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "128000",
+    "MAX_THINKING_TOKENS": "128000",
+    "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1"
+  },
+  "autoUpdatesChannel": "stable",
+  "autoMemoryEnabled": false,
+  "showThinkingSummaries": true,
+  "skipDangerousModePermissionPrompt": true
+}
