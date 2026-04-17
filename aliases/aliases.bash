@@ -7,8 +7,9 @@
 
 _csp="--append-system-prompt \"$(cat ~/.claude/system-prompt.txt)\""
 
-alias claudem="claude --dangerously-skip-permissions --effort max --model claude-opus-4-6[1m] $_csp"
+alias claudem="claude --dangerously-skip-permissions --effort max --model claude-opus-4-7[1m] $_csp"
+alias claudex="claude --dangerously-skip-permissions --effort xhigh --model claude-opus-4-7[1m] $_csp"
 alias claudems="claude --dangerously-skip-permissions --effort high --model claude-sonnet-4-6 $_csp"
-alias claudeh="claude --dangerously-skip-permissions --effort high --model claude-opus-4-6[1m] $_csp"
-alias claudeo="claude --dangerously-skip-permissions --model claude-opus-4-6[1m] $_csp"
+alias claudeh="claude --dangerously-skip-permissions --effort high --model claude-opus-4-7[1m] $_csp"
+alias claudeo="claude --dangerously-skip-permissions --model claude-opus-4-7[1m] $_csp"
 alias claudes="claude --dangerously-skip-permissions --model claude-sonnet-4-6 $_csp"

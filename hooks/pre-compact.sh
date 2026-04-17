@@ -39,6 +39,19 @@ mkdir -p "$(dirname "$OUT")" 2>/dev/null
     echo ""
   fi
 
+  # Active tasks from Claude plans dir
+  PLANS_DIR="$HOME/.claude/plans"
+  if [ -d "$PLANS_DIR" ]; then
+    LATEST=$(ls -t "$PLANS_DIR"/*.md 2>/dev/null | head -1)
+    if [ -n "$LATEST" ]; then
+      echo "## Latest Plan File"
+      echo "$(basename "$LATEST")"
+      head -20 "$LATEST"
+      echo "..."
+      echo ""
+    fi
+  fi
+
 } > "$OUT" 2>/dev/null
 
 exit 0

@@ -180,5 +180,6 @@
   "autoUpdatesChannel": "stable",
   "autoMemoryEnabled": false,
   "showThinkingSummaries": true,
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "awaySummaryEnabled": true
 }

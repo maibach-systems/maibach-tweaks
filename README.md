@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Config_Kit-F28C28?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPjxwYXRoIGQ9Ik0xMiAyTDIgN2wxMCA1IDEwLTUtMTAtNXoiLz48cGF0aCBkPSJNMiAxN2wxMCA1IDEwLTUiLz48cGF0aCBkPSJNMiAxMmwxMCA1IDEwLTUiLz48L3N2Zz4=" alt="Maibach Tweaks" />
   <br/>
-  <img src="https://img.shields.io/badge/patches-16-blue?style=flat-square" alt="16 patches" />
+  <img src="https://img.shields.io/badge/patches-19-blue?style=flat-square" alt="19 patches" />
   <img src="https://img.shields.io/badge/hooks-9-blue?style=flat-square" alt="9 hooks" />
   <img src="https://img.shields.io/badge/agents-3-blue?style=flat-square" alt="3 agents" />
   <img src="https://img.shields.io/badge/commands-8-blue?style=flat-square" alt="8 commands" />
@@ -19,11 +19,10 @@
 
 Claude Code's default system prompt contains instructions like:
 
-> *"Try the simplest approach first"*
+> *"Don't add features, refactor, or introduce abstractions beyond what the task requires"*
 > *"Don't add error handling"*
-> *"If you can say it in one sentence, don't use three"*
+> *"Three similar lines is better than a premature abstraction"*
 > *"Don't clean up surrounding code"*
-> *"Three similar lines of code is better than a premature abstraction"*
 
 These are reasonable guardrails for casual use. For production work, they cause the model to cut corners, skip edge cases, avoid thorough investigation, and produce brittle code that needs immediate follow-up.
 
@@ -59,30 +58,29 @@ cd maibach-tweaks
 
 ### `patches/` — Binary Prompt Patches
 
-16 string replacements applied to Claude Code's `cli.js`. The core ones:
+19 string replacements applied to Claude Code's `cli.js` (with version-specific variants for cross-version compatibility). The core ones:
 
 <table>
 <tr><th width="40">#</th><th>Default</th><th>Patched</th></tr>
-<tr><td>1</td><td><code>Try the simplest approach first</code></td><td><code>Choose the approach that correctly and completely solves the problem</code></td></tr>
-<tr><td>2</td><td>Brevity applies to everything</td><td>Brevity applies to messages only, not implementation depth</td></tr>
+<tr><td>4</td><td><code>Don't add features beyond what the task requires</code></td><td>Fix adjacent broken code discovered during investigation</td></tr>
 <tr><td>5</td><td><code>Don't add error handling</code></td><td><code>Add error handling at real boundaries</code> (I/O, APIs, user input)</td></tr>
 <tr><td>7</td><td><code>Don't gold-plate</code></td><td>Do thorough work including edge cases</td></tr>
 <tr><td>8</td><td>Explore agent optimized for speed</td><td>Explore agent optimized for thoroughness</td></tr>
 <tr><td>12</td><td>No source citation rules</td><td>Must cite sources, never state training data as current truth</td></tr>
 <tr><td>13</td><td>Tool output trusted implicitly</td><td>Tool output treated as claims — must verify before relaying</td></tr>
+<tr><td>17</td><td>Planning documents banned</td><td>Allowed when project rules require them (current-plan.md)</td></tr>
+<tr><td>18</td><td>"One or two sentences" end-of-turn summary</td><td>Proportional summaries — complex work gets structured output</td></tr>
 </table>
 
 <details>
-<summary><strong>All 16 patches</strong></summary>
+<summary><strong>All patches</strong></summary>
 
 | # | What Changes |
 |-|-|
-| 1 | "Simplest approach" → "correctly and completely solves the problem" |
-| 2 | Brevity decoupled from implementation thoroughness |
-| 3 | "One sentence" rule removed for implementation work |
-| 4 | Adjacent broken code may be fixed during investigation |
+| 1-3 | Brevity/simplicity bias removed (obsolete in v2.1.110+ — Anthropic adopted similar wording) |
+| 4 | Adjacent broken code may be fixed during investigation (v109 + v112+ variants) |
 | 5 | Error handling encouraged at real boundaries |
-| 6 | "Three lines > abstraction" → use judgment |
+| 6 | "Three lines > abstraction" → use judgment (v109 variant; merged into patch 4 for v112+) |
 | 7 | "Don't gold-plate" → thorough work including edge cases |
 | 8 | Explore agent: speed → thoroughness |
 | 9 | "Short and concise" → "clear and appropriately detailed" |
@@ -93,8 +91,12 @@ cd maibach-tweaks
 | 14 | Subagent summaries must pass through source citations |
 | 15 | Box-drawing tables banned, markdown tables enforced |
 | 16 | Hook-referenced skills loaded from definition, not paraphrased |
+| 17 | Planning documents allowed when project rules require them |
+| 18 | End-of-turn summaries proportional to task complexity |
 
 </details>
+
+**Cross-version support:** Patches 4 and 6 include version-specific variants (v2.1.109 and v2.1.112+ wording) so the script works across Claude Code versions. Skipped patches are expected — they target text that Anthropic already removed or reworded.
 
 **Auto-update survival:** The `--watch` flag installs a file watcher (launchd on macOS, systemd on Linux) that monitors `~/.local/share/claude/versions/` and re-patches automatically when Claude Code updates itself.
 
@@ -131,7 +133,7 @@ cd maibach-tweaks
 
 | Hook | What it does |
 |-|-|
-| `pre-compact.sh` | Saves plan, git state, branch to `.claude/session-state.md` before compression |
+| `pre-compact.sh` | Saves plan, git state, branch, latest plan file to `.claude/session-state.md` before compression |
 | `post-compact.sh` | Re-injects critical rules, plan, deploy commands after compression |
 
 > [!TIP]
@@ -143,14 +145,14 @@ cd maibach-tweaks
 
 Subagents run in their own context window. Spawn them for specific tasks instead of doing everything in the main thread.
 
-| Agent | Purpose |
-|-|-|
-| `code-quality` | Code review — dead code, duplication, performance, naming, types |
-| `security` | Security audit — XSS, injection, secrets, deps, auth, headers |
-| `plan-griller` | Adversarial plan validator — finds problems, not praise (uses Opus) |
+| Agent | Model | Purpose |
+|-|-|-|
+| `plan-griller` | Opus | Adversarial plan validator — finds problems, not praise |
+| `security` | Opus | Security audit — XSS, injection, secrets, deps, auth, headers |
+| `code-quality` | Opus | Code review — dead code, duplication, performance, naming, types |
 
 > [!NOTE]
-> All agents except `plan-griller` use Sonnet to save cost. The griller uses Opus because adversarial validation needs deeper reasoning. Add your own agents in `~/.claude/agents/` — see [Customization](#customization).
+> All three agents use Opus for deeper reasoning on quality-critical tasks. Add your own agents in `~/.claude/agents/` — see [Customization](#customization).
 
 ---
 
@@ -187,8 +189,9 @@ Type `/command-name` in Claude Code to run these. Each orchestrates multiple sub
 - Custom statusline
 - Permission bypass for common tools, ask-mode for destructive ops
 - Auto-memory disabled (explicit over implicit)
+- Session recap enabled (`awaySummaryEnabled`)
 
-**`keybindings.json`** — Vim-style navigation (j/k in lists, settings, message selector) plus shortcuts for thinking toggle (Ctrl+L), model picker (Meta+P), undo (Ctrl+_), stash (Ctrl+S).
+**`keybindings.json`** — Vim-style navigation (j/k in lists, settings, message selector) plus shortcuts for thinking toggle (Ctrl+Shift+L), model picker (Meta+P), undo (Ctrl+_), stash (Ctrl+S).
 
 **`system-prompt.txt`** — Injected per session via aliases. Scales ceremony to task size: simple tasks get no plan overhead, complex tasks get full plan-validate-implement-check workflow.
 
@@ -199,23 +202,24 @@ Type `/command-name` in Claude Code to run these. Each orchestrates multiple sub
 Shows at a glance:
 
 ```
-my-project main*  │  ████░░░░ 47%  $2.34  +142 -38  23m  Opus1M
+my-project main*  │  ████░░░░ 47%  $2.34  +142 -38  23m  Opus4.71M
      ↑       ↑ ↑        ↑       ↑      ↑      ↑     ↑
   project branch dirty context  cost  lines  time  model
 ```
 
-Color-coded context bar: green (<50%), yellow (50-80%), red (>80%). Cost turns yellow >$1, red >$5. Dirty branch marker when uncommitted changes exist. Agent name shown when in subagent context.
+Color-coded context bar: green (<50%), yellow (50-80%), red (>80%). Cost turns yellow >$1, red >$5. Dirty branch marker when uncommitted changes exist. Agent name shown when in subagent context. Model display shows version number (Opus4.7, Sonnet4.6, etc.).
 
 ---
 
 ### `aliases/` — Shell Shortcuts
 
 ```bash
-claudem   # Max effort, Opus 1M context
-claudeh   # High effort, Opus 1M
-claudeo   # Default effort, Opus 1M
-claudems  # High effort, Sonnet
-claudes   # Default effort, Sonnet
+claudem   # Max effort, Opus 4.7 1M context
+claudex   # Extra-high effort, Opus 4.7 1M (new xhigh level)
+claudeh   # High effort, Opus 4.7 1M
+claudeo   # Default effort, Opus 4.7 1M
+claudems  # High effort, Sonnet 4.6
+claudes   # Default effort, Sonnet 4.6
 ```
 
 All aliases auto-inject `--dangerously-skip-permissions` and the system prompt from `~/.claude/system-prompt.txt`.
@@ -285,6 +289,16 @@ The included `settings.json` ships with custom spinner verbs. Swap them out in `
 }
 ```
 
+### Recommended Post-Install Settings
+
+These settings are stored via `/config` (interactive), not in settings.json:
+
+```
+/tui fullscreen                    # Flicker-free rendering (v2.1.110+)
+/theme → Auto (match terminal)    # Matches dark/light from terminal (v2.1.111+)
+/config → Show last response in external editor → on    # Ctrl+G shows context (v2.1.110+)
+```
+
 ---
 
 ## File Structure
@@ -294,7 +308,7 @@ maibach-tweaks/
 ├── install.sh                      Installer with backup/restore/uninstall/dry-run
 │
 ├── patches/
-│   └── patch-claude-code.sh        16 prompt patches + auto-update watcher
+│   └── patch-claude-code.sh        19 prompt patches + auto-update watcher
 │
 ├── config/
 │   ├── CLAUDE.md                   Global instructions
@@ -314,9 +328,9 @@ maibach-tweaks/
 │   └── post-compact.sh             Restore state after compaction
 │
 ├── agents/
-│   ├── code-quality.md             Code review
-│   ├── security.md                 Security audit
-│   └── plan-griller.md             Adversarial plan validation
+│   ├── plan-griller.md             Adversarial plan validation (Opus)
+│   ├── security.md                 Security audit (Opus)
+│   └── code-quality.md             Code review (Opus)
 │
 ├── commands/
 │   ├── audit.md                    Full project audit

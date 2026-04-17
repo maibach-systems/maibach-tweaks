@@ -121,8 +121,13 @@ model_part=""
 model=$(echo "$input" | jq -r '.model.display_name // ""')
 if [ -n "$model" ]; then
   case "$model" in
+    *Opus*4.7*1M*|*opus*4.7*1m*) short_model="Opus4.71M" ;;
+    *Opus*4.6*1M*|*opus*4.6*1m*) short_model="Opus4.61M" ;;
     *Opus*1M*|*opus*1m*) short_model="Opus1M" ;;
+    *Opus*4.7*|*opus*4.7*) short_model="Opus4.7" ;;
+    *Opus*4.6*|*opus*4.6*) short_model="Opus4.6" ;;
     *Opus*|*opus*) short_model="Opus" ;;
+    *Sonnet*4.6*|*sonnet*4.6*) short_model="Sonnet4.6" ;;
     *Sonnet*|*sonnet*) short_model="Sonnet" ;;
     *Haiku*|*haiku*) short_model="Haiku" ;;
     *) short_model="$model" ;;

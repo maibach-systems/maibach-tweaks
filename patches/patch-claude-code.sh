@@ -11,8 +11,7 @@ set -euo pipefail
 #   as verified fact.
 #
 # Based on: https://gist.github.com/elimence/c28590fc4128dcc591a16e082a8cec2e
-# Extended with patches 12-16 for source citation, anti-hallucination, and
-# table formatting enforcement.
+# Adapted with 3 additional patches (12-14) for source citation enforcement.
 #
 # Requirements:
 #   - Node.js >= 18
@@ -38,7 +37,7 @@ SYSTEMD_SERVICE="claude-code-patcher.service"
 SYSTEMD_DIR="$HOME/.config/systemd/user"
 
 # Total number of patches (update if you add more)
-TOTAL_PATCHES=16
+TOTAL_PATCHES=19
 
 # --------------------------------------------------------------------------- #
 # Resolve paths
@@ -117,7 +116,7 @@ const fs = require("fs");
 const cli_js = process.env.CLI_JS;
 const dryRun = process.env.DRY_RUN === "1";
 const checkOnly = process.env.CHECK_ONLY === "1";
-const TOTAL_PATCHES = 16;
+const TOTAL_PATCHES = 19;
 
 let src = fs.readFileSync(cli_js, "utf8");
 let applied = 0;
@@ -175,10 +174,17 @@ patch(
 // ===========================================================================
 // PATCH 4: Anti-gold-plating — allow necessary related work
 // ===========================================================================
+// v2.1.109 wording
 patch(
-  "Anti-gold-plating paragraph",
+  "Anti-gold-plating paragraph (v109)",
   "Don\x27t add features, refactor code, or make \"improvements\" beyond what was asked. A bug fix doesn\x27t need surrounding code cleaned up. A simple feature doesn\x27t need extra configurability. Don\x27t add docstrings, comments, or type annotations to code you didn\x27t change. Only add comments where the logic isn\x27t self-evident.",
   "Don\x27t add unrelated features or speculative improvements. However, if adjacent code is broken, fragile, or directly contributes to the problem being solved, fix it as part of the task. A bug fix should address related issues discovered during investigation. Don\x27t add docstrings, comments, or type annotations to code you didn\x27t change. Only add comments where the logic isn\x27t self-evident."
+);
+// v2.1.112+ wording
+patch(
+  "Anti-gold-plating paragraph (v112+)",
+  "Don\x27t add features, refactor, or introduce abstractions beyond what the task requires. A bug fix doesn\x27t need surrounding cleanup; a one-shot operation doesn\x27t need a helper. Don\x27t design for hypothetical future requirements. Three similar lines is better than a premature abstraction. No half-finished implementations either.",
+  "Don\x27t add unrelated features or speculative improvements. However, if adjacent code is broken, fragile, or directly contributes to the problem being solved, fix it as part of the task. A bug fix should address related issues discovered during investigation. Don\x27t add docstrings, comments, or type annotations to code you didn\x27t change. Only add comments where the logic isn\x27t self-evident. Don\x27t create helpers, utilities, or abstractions for one-time operations. Don\x27t design for hypothetical future requirements. The right amount of complexity is what the task actually requires—no speculative abstractions, but no half-finished implementations either. Use judgment about when to extract shared logic. Avoid premature abstractions for hypothetical reuse, but do extract when duplication causes real maintenance risk."
 );
 
 // ===========================================================================
@@ -245,7 +251,7 @@ patch(
 );
 
 // ===========================================================================
-// PATCH 12: No training-data facts, always cite sources
+// PATCH 12 (CUSTOM): No training-data facts, always cite sources
 // ===========================================================================
 patch(
   "URL guess rule + no-training-data-as-truth",
@@ -254,7 +260,7 @@ patch(
 );
 
 // ===========================================================================
-// PATCH 13: Tool output is not inherently trustworthy
+// PATCH 13 (CUSTOM): Tool output is not inherently trustworthy
 // ===========================================================================
 patch(
   "Tool results skepticism",
@@ -263,7 +269,7 @@ patch(
 );
 
 // ===========================================================================
-// PATCH 14: Subagent summaries must pass through sources
+// PATCH 14 (CUSTOM): Subagent summaries must pass through sources
 // ===========================================================================
 patch(
   "Subagent summary source citation",
@@ -272,7 +278,7 @@ patch(
 );
 
 // ===========================================================================
-// PATCH 15: Ban box-drawing tables
+// PATCH 15 (CUSTOM): Ban box-drawing tables
 // ===========================================================================
 patch(
   "Box-drawing table ban",
@@ -281,7 +287,7 @@ patch(
 );
 
 // ===========================================================================
-// PATCH 16: Hook skill dispatch — use actual skill definitions
+// PATCH 16 (CUSTOM): Hook skill dispatch — use actual skill definitions
 // ===========================================================================
 patch(
   "Hook skill dispatch",
@@ -290,11 +296,35 @@ patch(
 );
 
 // ===========================================================================
+// PATCH 17 (CUSTOM): Allow planning documents when project rules require them
+// v2.1.104+ replaces the old output-efficiency section (Patches 1-3) with a
+// new communication-style block that bans planning documents outright.
+// This conflicts with the current-plan.md workflow.
+// ===========================================================================
+patch(
+  "Communication style: allow planning documents",
+  "Don\x27t create planning, decision, or analysis documents unless the user asks for them \u2014 work from conversation context, not intermediate files.",
+  "Don\x27t create planning or analysis documents speculatively. When project rules (CLAUDE.md, .claude/rules/) require them, follow those rules \u2014 e.g. .claude/current-plan.md for tracked multi-phase work."
+);
+
+// ===========================================================================
+// PATCH 18 (CUSTOM): Scale end-of-turn summary to complexity
+// "one or two sentences" suppresses the structured deploy-group summaries
+// that the user wants (tables with phases, commits, status).
+// ===========================================================================
+patch(
+  "Communication style: proportional summaries",
+  "End-of-turn summary: one or two sentences. What changed and what\x27s next. Nothing else.",
+  "End-of-turn summary: concise, proportional to complexity. State what changed and what\x27s next. A one-file fix needs one sentence; a deploy group with multiple phases deserves a structured summary."
+);
+
+// ===========================================================================
 // Results
 // ===========================================================================
 if (checkOnly) {
   const notApplied = TOTAL_PATCHES - alreadyApplied - skipped;
   console.log("\n" + alreadyApplied + " applied, " + notApplied + " not applied, " + skipped + " obsolete/not-found in this version");
+  // Success if everything applicable is applied (skipped patches target strings Anthropic already removed)
   process.exit(notApplied === 0 ? 0 : 1);
 }
 
@@ -303,7 +333,7 @@ if (!dryRun) {
 }
 console.log("\nPatches applied: " + applied + ", already applied: " + alreadyApplied + ", skipped: " + skipped);
 if (dryRun) console.log("(dry run — no files modified)");
-if (skipped > 4) {
+if (skipped > 6) {
   console.log("WARNING: many patches skipped — Claude Code may have changed its prompt format.");
 }
 '
