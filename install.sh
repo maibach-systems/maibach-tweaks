@@ -85,6 +85,7 @@ create_backup() {
     "settings.json"
     "keybindings.json"
     "system-prompt.txt"
+    "my-system-prompt.txt"
     "statusline-command.sh"
   )
 
@@ -156,9 +157,9 @@ install_tweaks() {
     warn "keybindings.json already exists — skipping"
   fi
 
-  # system-prompt.txt
-  run_cp "$SCRIPT_DIR/config/system-prompt.txt" "$CLAUDE_DIR/system-prompt.txt"
-  ok "Installed system-prompt.txt"
+  # my-system-prompt.txt — used by aliases via --system-prompt-file
+  run_cp "$SCRIPT_DIR/config/my-system-prompt.txt" "$CLAUDE_DIR/my-system-prompt.txt"
+  ok "Installed my-system-prompt.txt"
 
   # --- Statusline ---
   run_cp "$SCRIPT_DIR/statusline/statusline-command.sh" "$CLAUDE_DIR/statusline-command.sh"
@@ -190,30 +191,41 @@ install_tweaks() {
   done
   ok "Installed $(ls "$SCRIPT_DIR"/commands/*.md | wc -l | tr -d ' ') commands"
 
-  # --- Patches ---
+  # --- Patches (legacy, for CC <= 2.1.112 only) ---
   run_cp "$SCRIPT_DIR/patches/patch-claude-code.sh" "$CLAUDE_DIR/patch-claude-code.sh"
   run_chmod +x "$CLAUDE_DIR/patch-claude-code.sh"
-  ok "Installed patch script"
+  ok "Installed legacy patch script (only usable on CC <= 2.1.112)"
+
+  # --- Aliases ---
+  run_cp "$SCRIPT_DIR/aliases/aliases.zsh" "$CLAUDE_DIR/aliases.zsh"
+  run_cp "$SCRIPT_DIR/aliases/aliases.bash" "$CLAUDE_DIR/aliases.bash"
+  ok "Installed shell aliases"
 
   echo ""
   printf "${bold}${green}Installation complete.${reset}\n"
   echo ""
   echo "Next steps:"
   echo ""
-  echo "  1. Apply prompt patches (recommended):"
-  echo "     ~/.claude/patch-claude-code.sh"
+  echo "  1. Add aliases to your shell:"
+  echo "     echo 'source ~/.claude/aliases.zsh'  >> ~/.zshrc     # zsh"
+  echo "     echo 'source ~/.claude/aliases.bash' >> ~/.bashrc   # bash"
+  echo "     Then: source ~/.zshrc  (or open a fresh terminal)"
   echo ""
-  echo "  2. Survive auto-updates (optional):"
-  echo "     ~/.claude/patch-claude-code.sh --watch"
+  echo "  2. Try it:"
+  echo "     claudem     # Max effort, Opus 4.7 1M context"
+  echo "     claudeh     # High effort, Opus 4.7 1M"
+  echo "     claudes     # Default effort, Sonnet"
   echo ""
-  echo "  3. Add aliases to your shell (optional):"
-  echo "     echo 'source ~/.claude/aliases.zsh' >> ~/.zshrc"
+  echo "  3. Review and customize:"
+  echo "     - ~/.claude/my-system-prompt.txt   (system prompt, loaded via --system-prompt-file)"
+  echo "     - ~/.claude/CLAUDE.md              (global user instructions)"
+  echo "     - ~/.claude/settings.json          (permissions, hooks, env)"
+  echo "     - ~/.claude/agents/*.md            (subagent definitions)"
+  echo "     - ~/.claude/commands/*.md          (slash commands)"
   echo ""
-  echo "  4. Review and customize:"
-  echo "     - ~/.claude/CLAUDE.md        (global instructions)"
-  echo "     - ~/.claude/settings.json    (permissions, hooks, env)"
-  echo "     - ~/.claude/agents/*.md      (subagent definitions)"
-  echo "     - ~/.claude/commands/*.md    (slash commands)"
+  echo "  Legacy note: patch-claude-code.sh only works on Claude Code <= 2.1.112"
+  echo "  (when cli.js was pure JavaScript). From 2.1.113 onwards CC ships as a"
+  echo "  native binary; use the aliases + --system-prompt-file approach instead."
   echo ""
 }
 
@@ -291,7 +303,7 @@ show_status() {
   fi
 
   # Check config files
-  local configs=("CLAUDE.md" "settings.json" "keybindings.json" "system-prompt.txt" "statusline-command.sh")
+  local configs=("CLAUDE.md" "settings.json" "keybindings.json" "my-system-prompt.txt" "statusline-command.sh" "aliases.zsh" "aliases.bash")
   for f in "${configs[@]}"; do
     if [[ -f "$CLAUDE_DIR/$f" ]]; then
       ok "$f installed"

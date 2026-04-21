@@ -1,6 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# =============================================================================
+# DEPRECATED — only works on Claude Code 2.1.112 and earlier
+# =============================================================================
+#
+# From CC 2.1.113 onwards, the @anthropic-ai/claude-code npm package no longer
+# ships a bundled cli.js. It ships a thin wrapper (cli-wrapper.cjs) plus a
+# platform-specific native Mach-O/ELF binary (via optional deps). The system
+# prompt strings live inside that compiled binary, not in patchable JS — so
+# the regex-based patches in this script find no targets and silently fail.
+#
+# For CC 2.1.113+, use the new approach: write your custom system prompt to
+# ~/.claude/my-system-prompt.txt and launch claude via an alias that passes
+# --system-prompt-file. That flag is documented, stable, and replaces the
+# baked-in behavior prompt entirely. See aliases/aliases.zsh in this repo.
+#
+# This script is kept for users still on CC <= 2.1.112 and for historical
+# reference. Running it on 2.1.113+ is harmless — it just won't match anything.
+#
+# =============================================================================
+#
 # patch-claude-code.sh — Rebalance Claude Code prompts to fix corner-cutting
 # behavior AND enforce source-citation / anti-hallucination guardrails.
 #

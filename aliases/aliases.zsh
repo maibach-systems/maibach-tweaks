@@ -1,12 +1,14 @@
 # Claude Code aliases — model selection + system prompt injection
 #
-# Usage: Source this file in your .zshrc or .bashrc:
+# Usage: Source this file in your .zshrc:
 #   source ~/.claude/aliases.zsh
 #
 # Adjust paths if you installed maibach-tweaks to a different location.
 
-# System prompt (appended to every session)
-_csp="--append-system-prompt \"$(cat ~/.claude/system-prompt.txt)\""
+# System prompt: replaces Anthropic's default system prompt entirely (not append).
+# Works on Claude Code 2.1.112+ (including 2.1.113+ native binary).
+# --system-prompt-file is documented public CLI API, survives CC auto-updates.
+_csp="--system-prompt-file $HOME/.claude/my-system-prompt.txt"
 
 # Aliases — adjust model IDs when new models release
 alias claudem="claude --dangerously-skip-permissions --effort max --model claude-opus-4-7[1m] $_csp"      # Max effort, Opus 1M

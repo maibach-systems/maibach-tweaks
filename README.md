@@ -1,15 +1,16 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Claude_Code-Config_Kit-F28C28?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiPjxwYXRoIGQ9Ik0xMiAyTDIgN2wxMCA1IDEwLTUtMTAtNXoiLz48cGF0aCBkPSJNMiAxN2wxMCA1IDEwLTUiLz48cGF0aCBkPSJNMiAxMmwxMCA1IDEwLTUiLz48L3N2Zz4=" alt="Maibach Tweaks" />
   <br/>
-  <img src="https://img.shields.io/badge/patches-19-blue?style=flat-square" alt="19 patches" />
+  <img src="https://img.shields.io/badge/system--prompt-replaces_CC_default-F28C28?style=flat-square" alt="system prompt replacement" />
   <img src="https://img.shields.io/badge/hooks-9-blue?style=flat-square" alt="9 hooks" />
   <img src="https://img.shields.io/badge/agents-3-blue?style=flat-square" alt="3 agents" />
   <img src="https://img.shields.io/badge/commands-8-blue?style=flat-square" alt="8 commands" />
+  <img src="https://img.shields.io/badge/CC-%E2%89%A5_2.1.112-green?style=flat-square" alt="CC >= 2.1.112" />
   <img src="https://img.shields.io/badge/macOS_%7C_Linux-supported-green?style=flat-square" alt="macOS | Linux" />
 </p>
 
 <p align="center">
-  <strong>Patches, hooks, agents, commands and settings for Claude Code.</strong><br/>
+  <strong>System-prompt replacement, hooks, agents, commands and settings for Claude Code.</strong><br/>
   <sub>Built from daily production use. Not theory — every piece exists because the default behavior caused a real problem.</sub>
 </p>
 
@@ -23,10 +24,22 @@ Claude Code's default system prompt contains instructions like:
 > *"Don't add error handling"*
 > *"Three similar lines is better than a premature abstraction"*
 > *"Don't clean up surrounding code"*
+> *"Keep text between tool calls to ≤25 words. Keep final responses to ≤100 words"*
 
-These are reasonable guardrails for casual use. For production work, they cause the model to cut corners, skip edge cases, avoid thorough investigation, and produce brittle code that needs immediate follow-up.
+These are reasonable guardrails for casual use. For production work, they cause the model to cut corners, skip edge cases, avoid thorough investigation, produce brittle code that needs immediate follow-up, and trigger the "anxiety/apology spiral" mode that recent research (Amanda Askell, Anthropic) identifies as a direct output-quality killer.
 
-Maibach Tweaks fixes this at every layer — from the binary prompt to the workflow enforcement.
+Maibach Tweaks replaces the whole behavior block of the default system prompt with an Askell-conform, source-citation-enforcing, senior-engineer-toned variant — while leaving tool schemas, project-level CLAUDE.md, and subagent infrastructure intact.
+
+---
+
+## How It Works — and Why It Survives Updates
+
+The repo ships a 13 KB custom system prompt (`config/my-system-prompt.txt`). An alias passes it to every Claude Code session via the documented `--system-prompt-file` CLI flag. That flag **fully replaces** the behavior-instruction block of the default prompt (verified via HTTP-proxy capture — the outgoing `system` field in the API request contains your custom text, not Anthropic's default).
+
+No binary patching. No file watchers. No JavaScript string replacement that breaks on every CC version bump.
+
+> [!IMPORTANT]
+> The older `patches/patch-claude-code.sh` approach (regex replacements on `cli.js`) is **deprecated as of CC 2.1.113**. The npm package no longer ships patchable JavaScript; everything is compiled into a native Mach-O/ELF binary via per-platform optional dependencies. The patch script is kept in the repo for users still on CC ≤ 2.1.112, but the recommended path is the `--system-prompt-file` approach below.
 
 ---
 
@@ -42,69 +55,77 @@ cd maibach-tweaks
 # Install (creates backup first)
 ./install.sh
 
-# Apply prompt patches
-~/.claude/patch-claude-code.sh
+# Add aliases to your shell
+echo 'source ~/.claude/aliases.zsh'  >> ~/.zshrc     # zsh
+echo 'source ~/.claude/aliases.bash' >> ~/.bashrc   # bash
 
-# Auto-repatch after updates (optional)
-~/.claude/patch-claude-code.sh --watch
+# Open a fresh terminal, then try it
+claudem     # Max effort, Opus 4.7 1M context, with custom system prompt
 ```
 
 > [!NOTE]
-> The installer never overwrites existing `CLAUDE.md`, `settings.json`, or `keybindings.json`. Your config stays intact.
+> The installer never overwrites existing `CLAUDE.md`, `settings.json`, or `keybindings.json`. Your config stays intact. `my-system-prompt.txt` and `statusline-command.sh` are always copied (backed up first).
 
 ---
 
 ## What's Inside
 
-### `patches/` — Binary Prompt Patches
+### `config/my-system-prompt.txt` — Replacement System Prompt
 
-19 string replacements applied to Claude Code's `cli.js` (with version-specific variants for cross-version compatibility). The core ones:
+A single ~13 KB text file that replaces the behavior-instruction block of Claude Code's default system prompt at runtime via `--system-prompt-file`. Organized into sections:
 
-<table>
-<tr><th width="40">#</th><th>Default</th><th>Patched</th></tr>
-<tr><td>4</td><td><code>Don't add features beyond what the task requires</code></td><td>Fix adjacent broken code discovered during investigation</td></tr>
-<tr><td>5</td><td><code>Don't add error handling</code></td><td><code>Add error handling at real boundaries</code> (I/O, APIs, user input)</td></tr>
-<tr><td>7</td><td><code>Don't gold-plate</code></td><td>Do thorough work including edge cases</td></tr>
-<tr><td>8</td><td>Explore agent optimized for speed</td><td>Explore agent optimized for thoroughness</td></tr>
-<tr><td>12</td><td>No source citation rules</td><td>Must cite sources, never state training data as current truth</td></tr>
-<tr><td>13</td><td>Tool output trusted implicitly</td><td>Tool output treated as claims — must verify before relaying</td></tr>
-<tr><td>17</td><td>Planning documents banned</td><td>Allowed when project rules require them (current-plan.md)</td></tr>
-<tr><td>18</td><td>"One or two sentences" end-of-turn summary</td><td>Proportional summaries — complex work gets structured output</td></tr>
-</table>
+| Section | Purpose |
+|-|-|
+| Role | Askell-conform senior-engineer opener. Explicit permission to disagree, no apology spirals, no defensive hedging. |
+| Work Quality | Read relevant files before concluding. Complete thoroughness without gold-plating. Adjacent broken code fixable. Real boundaries need validation. |
+| Sources, Facts, Verification | Distinguish verified vs. from-memory. Cite URLs/paths/commands with line numbers. Tool output treated as claims, not facts. No silent upgrade of unsourced subagent claims. |
+| Subagent Usage | Aggressive parallelism. Verbatim-quote rules for delegation prompts. Synthesis-layer spot-check mandatory. Hook-referenced skills loaded verbatim from `~/.claude/commands/` or `~/.claude/agents/`. |
+| Tool Usage | Dedicated tools before Bash. Parallel calls when independent. TaskCreate for multi-step work. |
+| Workflow Scaling | Simple/Medium/Complex ladder. Project CLAUDE.md/rules override defaults. No speculative planning documents. |
+| Executing Actions | Blast-radius-aware confirmation. Force-flag ban. Investigate unexpected state before overwriting. |
+| Output Style | ASCII tables in code blocks (no Unicode box-drawing). Proportional end-of-turn summary. No narration of internal deliberation. |
+| Security | Authorized testing OK, destructive/mass-targeting refused. OWASP top-10 awareness. No secret-file commits. |
+| Project Context | Project-level rules override these global defaults. Project-specific assumptions don't leak to other projects. |
+
+**Design principles:**
+- Positive instructions over negations (Askell-principle — reduces anxiety mode)
+- Concrete, measurable criteria over vague adjectives (Opus-4.7 takes instructions literally, per Anthropic's own migration note)
+- Project-agnostic — works in any repo, defers project rules to project-level `CLAUDE.md`/`.claude/rules/`
+- No hidden length caps (no "≤25 words" / "≤100 words" anxiety triggers)
+- Explicit source-citation and verification-rules for factual claims + subagent synthesis
+
+---
+
+### `patches/` — Legacy JavaScript Patches (CC ≤ 2.1.112 only)
+
+> [!WARNING]
+> Deprecated on CC 2.1.113+. Kept for historical reference and users on older CC versions.
+
+19 regex replacements originally applied to CC's `cli.js` before Anthropic moved prompts into a compiled native binary. The **intent** of each patch is now baked into `config/my-system-prompt.txt` as a positive instruction rather than a post-hoc override.
 
 <details>
-<summary><strong>All patches</strong></summary>
+<summary><strong>Original patch intents (now superseded by my-system-prompt.txt)</strong></summary>
 
-| # | What Changes |
-|-|-|
-| 1-3 | Brevity/simplicity bias removed (obsolete in v2.1.110+ — Anthropic adopted similar wording) |
-| 4 | Adjacent broken code may be fixed during investigation (v109 + v112+ variants) |
-| 5 | Error handling encouraged at real boundaries |
-| 6 | "Three lines > abstraction" → use judgment (v109 variant; merged into patch 4 for v112+) |
-| 7 | "Don't gold-plate" → thorough work including edge cases |
-| 8 | Explore agent: speed → thoroughness |
-| 9 | "Short and concise" → "clear and appropriately detailed" |
-| 10 | Code snippets allowed in subagent output when useful |
-| 11 | Closely related issues may be fixed during work |
-| 12 | Source citation enforcement, no training-data-as-truth |
-| 13 | Tool output skepticism (WebFetch, search, subagents) |
-| 14 | Subagent summaries must pass through source citations |
-| 15 | Box-drawing tables banned, markdown tables enforced |
-| 16 | Hook-referenced skills loaded from definition, not paraphrased |
-| 17 | Planning documents allowed when project rules require them |
-| 18 | End-of-turn summaries proportional to task complexity |
+| # | Intent | Where it lives now |
+|-|-|-|
+| 1-3 | Remove brevity/simplicity bias | "Work Quality" + "Output Style" sections |
+| 4 | Allow fixing adjacent broken code | "Work Quality" — scope-of-task vs scope-of-file |
+| 5 | Error handling at real boundaries | "Work Quality" |
+| 6 | Use judgment on abstractions | "Work Quality" |
+| 7 | Thorough completion, not gold-plating | "Work Quality" |
+| 8 | Explore agent thoroughness | User's own `~/.claude/agents/` override |
+| 9 | "Clear and appropriately detailed" | "Output Style" |
+| 10 | Subagent code snippets when useful | "Subagent Usage" |
+| 11 | Related issues may be fixed | "Work Quality" |
+| 12 | Source citation enforcement | "Sources, Facts, Verification" |
+| 13 | Tool output skepticism | "Sources, Facts, Verification" |
+| 14 | Subagent summaries pass sources | "Subagent Usage" |
+| 15 | Box-drawing tables banned | "Output Style" |
+| 16 | Hook-referenced skills loaded verbatim | "Subagent Usage" |
+| 17 | Planning docs when project rules require | "Workflow Scaling" |
+| 18 | Proportional end-of-turn summaries | "Output Style" |
 
 </details>
-
-**Cross-version support:** Patches 4 and 6 include version-specific variants (v2.1.109 and v2.1.112+ wording) so the script works across Claude Code versions. Skipped patches are expected — they target text that Anthropic already removed or reworded.
-
-**Auto-update survival:** The `--watch` flag installs a file watcher (launchd on macOS, systemd on Linux) that monitors `~/.local/share/claude/versions/` and re-patches automatically when Claude Code updates itself.
-
-```bash
-~/.claude/patch-claude-code.sh --watch    # install watcher
-~/.claude/patch-claude-code.sh --check    # verify patches are applied
-~/.claude/patch-claude-code.sh --restore  # undo everything
-```
 
 ---
 
@@ -193,7 +214,7 @@ Type `/command-name` in Claude Code to run these. Each orchestrates multiple sub
 
 **`keybindings.json`** — Vim-style navigation (j/k in lists, settings, message selector) plus shortcuts for thinking toggle (Ctrl+Shift+L), model picker (Meta+P), undo (Ctrl+_), stash (Ctrl+S).
 
-**`system-prompt.txt`** — Injected per session via aliases. Scales ceremony to task size: simple tasks get no plan overhead, complex tasks get full plan-validate-implement-check workflow.
+**`my-system-prompt.txt`** — Loaded via `--system-prompt-file` alias flag. This is the heart of the repo — see dedicated section above for structure.
 
 ---
 
@@ -222,7 +243,7 @@ claudems  # High effort, Sonnet 4.6
 claudes   # Default effort, Sonnet 4.6
 ```
 
-All aliases auto-inject `--dangerously-skip-permissions` and the system prompt from `~/.claude/system-prompt.txt`.
+All aliases auto-inject `--dangerously-skip-permissions` and pass the custom system prompt via `--system-prompt-file ~/.claude/my-system-prompt.txt`. That flag replaces the 17+ KB Anthropic default behavior block with the 13 KB custom variant. Tool schemas, project CLAUDE.md, and subagent prompts are unaffected.
 
 ```bash
 # Add to your shell
@@ -307,14 +328,14 @@ These settings are stored via `/config` (interactive), not in settings.json:
 maibach-tweaks/
 ├── install.sh                      Installer with backup/restore/uninstall/dry-run
 │
-├── patches/
-│   └── patch-claude-code.sh        19 prompt patches + auto-update watcher
-│
 ├── config/
-│   ├── CLAUDE.md                   Global instructions
+│   ├── my-system-prompt.txt        Replacement system prompt (--system-prompt-file)
+│   ├── CLAUDE.md                   Global user-role instructions
 │   ├── settings.json               Permissions, hooks, env vars, statusline
-│   ├── keybindings.json            Vim-style navigation
-│   └── system-prompt.txt           Per-session workflow injection
+│   └── keybindings.json            Vim-style navigation
+│
+├── patches/
+│   └── patch-claude-code.sh        LEGACY: 19 JS patches (CC <= 2.1.112 only)
 │
 ├── hooks/
 │   ├── block-env-edit.sh           Block .env edits
@@ -354,9 +375,9 @@ maibach-tweaks/
 
 ## Requirements
 
-- **Claude Code CLI** — installed and working
-- **Node.js >= 18** — for the patch script
+- **Claude Code CLI** — installed and working (2.1.112 or newer recommended; aliases + `--system-prompt-file` approach works on all ≥ 2.1.112)
 - **jq** — for hooks (`brew install jq` on macOS, usually pre-installed on Linux)
+- **Node.js >= 18** — only if using the legacy patch script on CC ≤ 2.1.112
 
 ---
 
